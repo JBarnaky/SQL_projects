@@ -1,0 +1,1138 @@
+CREATE TABLE Банк
+(
+	БанкНомер  integer  IDENTITY (1,1) ,
+	Наименование  varchar(20)  NULL ,
+	БИК  varchar(20)  NULL ,
+	ИНН  varchar(20)  NULL ,
+	ОКПО  varchar(20)  NULL 
+)
+go
+
+
+ALTER TABLE Банк
+	ADD CONSTRAINT  XPKБанк PRIMARY KEY   NONCLUSTERED (БанкНомер  ASC)
+go
+
+
+CREATE TABLE Деятельность
+(
+	ДеятельностьНомер  integer  IDENTITY (1,1) ,
+	Наименование  varchar(20)  NULL ,
+	Описание  varchar(20)  NULL 
+)
+go
+
+
+ALTER TABLE Деятельность
+	ADD CONSTRAINT  XPKДеятельность PRIMARY KEY   NONCLUSTERED (ДеятельностьНомер  ASC)
+go
+
+
+CREATE TABLE Задолжность
+(
+	ЗадолжностьНомер  integer  IDENTITY (1,1) ,
+	Сумма  integer  NULL ,
+	ОтчетНомер  integer  NOT NULL ,
+	СотрудникНомер  integer  NOT NULL 
+)
+go
+
+
+ALTER TABLE Задолжность
+	ADD CONSTRAINT  XPKЗадолжность PRIMARY KEY   NONCLUSTERED (ЗадолжностьНомер  ASC)
+go
+
+
+CREATE TABLE Оплата
+(
+	ОплатаНомер  integer  IDENTITY (1,1) ,
+	Сумма  integer  NULL ,
+	ОтчетНомер  integer  NOT NULL ,
+	БанкНомер  integer  NOT NULL ,
+	ДатаОплаты  datetime  NULL 
+)
+go
+
+
+ALTER TABLE Оплата
+	ADD CONSTRAINT  XPKОплата PRIMARY KEY   NONCLUSTERED (ОплатаНомер  ASC)
+go
+
+
+CREATE TABLE Отчет
+(
+	ОтчетНомер  integer  IDENTITY (1,1) ,
+	Квартал  integer  NULL ,
+	Год  integer    NULL ,
+	Сумма  integer  NULL ,
+	Налог  integer  NULL ,
+	ДеятельностьНомер  integer  NOT NULL ,
+	ЛицоНомер  integer  NOT NULL 
+)
+go
+
+
+ALTER TABLE Отчет
+	ADD CONSTRAINT  XPKОтчет PRIMARY KEY   NONCLUSTERED (ОтчетНомер  ASC)
+go
+
+
+CREATE TABLE Сотрудник
+(
+	СотрудникНомер  integer  IDENTITY (1,1) ,
+	Фамилия  varchar(20)  NULL ,
+	Имя  varchar(20)  NULL ,
+	Отчество  varchar(20)  NULL ,
+	Должность  varchar(20)  NULL ,
+	Стаж  varchar(20)  NULL 
+)
+go
+
+
+ALTER TABLE Сотрудник
+	ADD CONSTRAINT  XPKСотрудник PRIMARY KEY   NONCLUSTERED (СотрудникНомер  ASC)
+go
+
+
+CREATE TABLE ЮридическоеЛицо
+(
+	ЛицоНомер  integer  IDENTITY (1,1) ,
+	Организация  varchar(20)  NULL ,
+	БИК  varchar(20)  NULL ,
+	ИНН  varchar(20)  NULL ,
+	ОКПО  varchar(20)  NULL ,
+	Адрес  varchar(20)  NULL ,
+	Телефон  varchar(20)  NULL 
+)
+go
+
+
+ALTER TABLE ЮридическоеЛицо
+	ADD CONSTRAINT  XPKЮридическоеЛицо PRIMARY KEY   NONCLUSTERED (ЛицоНомер  ASC)
+go
+
+
+
+ALTER TABLE Задолжность
+	ADD CONSTRAINT  R_6 FOREIGN KEY (ОтчетНомер) REFERENCES Отчет(ОтчетНомер)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+go
+
+
+ALTER TABLE Задолжность
+	ADD CONSTRAINT  R_7 FOREIGN KEY (СотрудникНомер) REFERENCES Сотрудник(СотрудникНомер)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+go
+
+
+
+ALTER TABLE Оплата
+	ADD CONSTRAINT  R_4 FOREIGN KEY (ОтчетНомер) REFERENCES Отчет(ОтчетНомер)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+go
+
+
+ALTER TABLE Оплата
+	ADD CONSTRAINT  R_5 FOREIGN KEY (БанкНомер) REFERENCES Банк(БанкНомер)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+go
+
+
+
+ALTER TABLE Отчет
+	ADD CONSTRAINT  R_1 FOREIGN KEY (ДеятельностьНомер) REFERENCES Деятельность(ДеятельностьНомер)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+go
+
+
+ALTER TABLE Отчет
+	ADD CONSTRAINT  R_3 FOREIGN KEY (ЛицоНомер) REFERENCES ЮридическоеЛицо(ЛицоНомер)
+		ON DELETE NO ACTION
+		ON UPDATE NO ACTION
+go
+
+
+
+CREATE TRIGGER tD_Банк ON Банк FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Банк */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Банк R/5 Оплата on parent delete cascade */
+    /* ERWIN_RELATION:CHECKSUM="0000c392", PARENT_OWNER="", PARENT_TABLE="Банк"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/5", C2P_VERB_PHRASE="R/5", 
+    FK_CONSTRAINT="R_5", FK_COLUMNS="БанкНомер" */
+    DELETE Оплата
+      FROM Оплата,deleted
+      WHERE
+        /*  %JoinFKPK(Оплата,deleted," = "," AND") */
+        Оплата.БанкНомер = deleted.БанкНомер
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Банк ON Банк FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Банк */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insБанкНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Банк R/5 Оплата on parent update cascade */
+  /* ERWIN_RELATION:CHECKSUM="00016547", PARENT_OWNER="", PARENT_TABLE="Банк"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/5", C2P_VERB_PHRASE="R/5", 
+    FK_CONSTRAINT="R_5", FK_COLUMNS="БанкНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(БанкНомер)
+  BEGIN
+    IF @NUMROWS = 1
+    BEGIN
+      SELECT @insБанкНомер = inserted.БанкНомер
+        FROM inserted
+      UPDATE Оплата
+      SET
+        /*  %JoinFKPK(Оплата,@ins," = ",",") */
+        Оплата.БанкНомер = @insБанкНомер
+      FROM Оплата,inserted,deleted
+      WHERE
+        /*  %JoinFKPK(Оплата,deleted," = "," AND") */
+        Оплата.БанкНомер = deleted.БанкНомер
+    END
+    ELSE
+    BEGIN
+      SELECT @errno = 30006,
+             @errmsg = 'Cannot cascade Банк update because more than one row has been affected.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_Деятельность ON Деятельность FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Деятельность */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Деятельность R/1 Отчет on parent delete cascade */
+    /* ERWIN_RELATION:CHECKSUM="0000cf27", PARENT_OWNER="", PARENT_TABLE="Деятельность"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/1", C2P_VERB_PHRASE="R/1", 
+    FK_CONSTRAINT="R_1", FK_COLUMNS="ДеятельностьНомер" */
+    DELETE Отчет
+      FROM Отчет,deleted
+      WHERE
+        /*  %JoinFKPK(Отчет,deleted," = "," AND") */
+        Отчет.ДеятельностьНомер = deleted.ДеятельностьНомер
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Деятельность ON Деятельность FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Деятельность */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insДеятельностьНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Деятельность R/1 Отчет on parent update cascade */
+  /* ERWIN_RELATION:CHECKSUM="00017ce1", PARENT_OWNER="", PARENT_TABLE="Деятельность"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/1", C2P_VERB_PHRASE="R/1", 
+    FK_CONSTRAINT="R_1", FK_COLUMNS="ДеятельностьНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(ДеятельностьНомер)
+  BEGIN
+    IF @NUMROWS = 1
+    BEGIN
+      SELECT @insДеятельностьНомер = inserted.ДеятельностьНомер
+        FROM inserted
+      UPDATE Отчет
+      SET
+        /*  %JoinFKPK(Отчет,@ins," = ",",") */
+        Отчет.ДеятельностьНомер = @insДеятельностьНомер
+      FROM Отчет,inserted,deleted
+      WHERE
+        /*  %JoinFKPK(Отчет,deleted," = "," AND") */
+        Отчет.ДеятельностьНомер = deleted.ДеятельностьНомер
+    END
+    ELSE
+    BEGIN
+      SELECT @errno = 30006,
+             @errmsg = 'Cannot cascade Деятельность update because more than one row has been affected.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_Задолжность ON Задолжность FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Задолжность */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Отчет R/6 Задолжность on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="000282aa", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/6", C2P_VERB_PHRASE="R/6", 
+    FK_CONSTRAINT="R_6", FK_COLUMNS="ОтчетНомер" */
+    IF EXISTS (SELECT * FROM deleted,Отчет
+      WHERE
+        /* %JoinFKPK(deleted,Отчет," = "," AND") */
+        deleted.ОтчетНомер = Отчет.ОтчетНомер AND
+        NOT EXISTS (
+          SELECT * FROM Задолжность
+          WHERE
+            /* %JoinFKPK(Задолжность,Отчет," = "," AND") */
+            Задолжность.ОтчетНомер = Отчет.ОтчетНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Задолжность because Отчет exists.'
+      GOTO ERROR
+    END
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Сотрудник R/7 Задолжность on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Сотрудник"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/7", C2P_VERB_PHRASE="R/7", 
+    FK_CONSTRAINT="R_7", FK_COLUMNS="СотрудникНомер" */
+    IF EXISTS (SELECT * FROM deleted,Сотрудник
+      WHERE
+        /* %JoinFKPK(deleted,Сотрудник," = "," AND") */
+        deleted.СотрудникНомер = Сотрудник.СотрудникНомер AND
+        NOT EXISTS (
+          SELECT * FROM Задолжность
+          WHERE
+            /* %JoinFKPK(Задолжность,Сотрудник," = "," AND") */
+            Задолжность.СотрудникНомер = Сотрудник.СотрудникНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Задолжность because Сотрудник exists.'
+      GOTO ERROR
+    END
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Задолжность ON Задолжность FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Задолжность */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insЗадолжностьНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Отчет R/6 Задолжность on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="0002ca52", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/6", C2P_VERB_PHRASE="R/6", 
+    FK_CONSTRAINT="R_6", FK_COLUMNS="ОтчетНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(ОтчетНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,Отчет
+        WHERE
+          /* %JoinFKPK(inserted,Отчет) */
+          inserted.ОтчетНомер = Отчет.ОтчетНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Задолжность because Отчет does not exist.'
+      GOTO ERROR
+    END
+  END
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Сотрудник R/7 Задолжность on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Сотрудник"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/7", C2P_VERB_PHRASE="R/7", 
+    FK_CONSTRAINT="R_7", FK_COLUMNS="СотрудникНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(СотрудникНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,Сотрудник
+        WHERE
+          /* %JoinFKPK(inserted,Сотрудник) */
+          inserted.СотрудникНомер = Сотрудник.СотрудникНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Задолжность because Сотрудник does not exist.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_Оплата ON Оплата FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Оплата */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Отчет R/4 Оплата on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="000242e9", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/4", C2P_VERB_PHRASE="R/4", 
+    FK_CONSTRAINT="R_4", FK_COLUMNS="ОтчетНомер" */
+    IF EXISTS (SELECT * FROM deleted,Отчет
+      WHERE
+        /* %JoinFKPK(deleted,Отчет," = "," AND") */
+        deleted.ОтчетНомер = Отчет.ОтчетНомер AND
+        NOT EXISTS (
+          SELECT * FROM Оплата
+          WHERE
+            /* %JoinFKPK(Оплата,Отчет," = "," AND") */
+            Оплата.ОтчетНомер = Отчет.ОтчетНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Оплата because Отчет exists.'
+      GOTO ERROR
+    END
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Банк R/5 Оплата on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Банк"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/5", C2P_VERB_PHRASE="R/5", 
+    FK_CONSTRAINT="R_5", FK_COLUMNS="БанкНомер" */
+    IF EXISTS (SELECT * FROM deleted,Банк
+      WHERE
+        /* %JoinFKPK(deleted,Банк," = "," AND") */
+        deleted.БанкНомер = Банк.БанкНомер AND
+        NOT EXISTS (
+          SELECT * FROM Оплата
+          WHERE
+            /* %JoinFKPK(Оплата,Банк," = "," AND") */
+            Оплата.БанкНомер = Банк.БанкНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Оплата because Банк exists.'
+      GOTO ERROR
+    END
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Оплата ON Оплата FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Оплата */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insОплатаНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Отчет R/4 Оплата on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="00028557", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/4", C2P_VERB_PHRASE="R/4", 
+    FK_CONSTRAINT="R_4", FK_COLUMNS="ОтчетНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(ОтчетНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,Отчет
+        WHERE
+          /* %JoinFKPK(inserted,Отчет) */
+          inserted.ОтчетНомер = Отчет.ОтчетНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Оплата because Отчет does not exist.'
+      GOTO ERROR
+    END
+  END
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Банк R/5 Оплата on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Банк"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/5", C2P_VERB_PHRASE="R/5", 
+    FK_CONSTRAINT="R_5", FK_COLUMNS="БанкНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(БанкНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,Банк
+        WHERE
+          /* %JoinFKPK(inserted,Банк) */
+          inserted.БанкНомер = Банк.БанкНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Оплата because Банк does not exist.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_Отчет ON Отчет FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Отчет */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Отчет R/4 Оплата on parent delete cascade */
+    /* ERWIN_RELATION:CHECKSUM="00041e1a", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/4", C2P_VERB_PHRASE="R/4", 
+    FK_CONSTRAINT="R_4", FK_COLUMNS="ОтчетНомер" */
+    DELETE Оплата
+      FROM Оплата,deleted
+      WHERE
+        /*  %JoinFKPK(Оплата,deleted," = "," AND") */
+        Оплата.ОтчетНомер = deleted.ОтчетНомер
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Отчет R/6 Задолжность on parent delete cascade */
+    /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/6", C2P_VERB_PHRASE="R/6", 
+    FK_CONSTRAINT="R_6", FK_COLUMNS="ОтчетНомер" */
+    DELETE Задолжность
+      FROM Задолжность,deleted
+      WHERE
+        /*  %JoinFKPK(Задолжность,deleted," = "," AND") */
+        Задолжность.ОтчетНомер = deleted.ОтчетНомер
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Деятельность R/1 Отчет on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Деятельность"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/1", C2P_VERB_PHRASE="R/1", 
+    FK_CONSTRAINT="R_1", FK_COLUMNS="ДеятельностьНомер" */
+    IF EXISTS (SELECT * FROM deleted,Деятельность
+      WHERE
+        /* %JoinFKPK(deleted,Деятельность," = "," AND") */
+        deleted.ДеятельностьНомер = Деятельность.ДеятельностьНомер AND
+        NOT EXISTS (
+          SELECT * FROM Отчет
+          WHERE
+            /* %JoinFKPK(Отчет,Деятельность," = "," AND") */
+            Отчет.ДеятельностьНомер = Деятельность.ДеятельностьНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Отчет because Деятельность exists.'
+      GOTO ERROR
+    END
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* ЮридическоеЛицо R/3 Отчет on child delete no action */
+    /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="ЮридическоеЛицо"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/3", C2P_VERB_PHRASE="R/3", 
+    FK_CONSTRAINT="R_3", FK_COLUMNS="ЛицоНомер" */
+    IF EXISTS (SELECT * FROM deleted,ЮридическоеЛицо
+      WHERE
+        /* %JoinFKPK(deleted,ЮридическоеЛицо," = "," AND") */
+        deleted.ЛицоНомер = ЮридическоеЛицо.ЛицоНомер AND
+        NOT EXISTS (
+          SELECT * FROM Отчет
+          WHERE
+            /* %JoinFKPK(Отчет,ЮридическоеЛицо," = "," AND") */
+            Отчет.ЛицоНомер = ЮридическоеЛицо.ЛицоНомер
+        )
+    )
+    BEGIN
+      SELECT @errno  = 30010,
+             @errmsg = 'Cannot delete last Отчет because ЮридическоеЛицо exists.'
+      GOTO ERROR
+    END
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Отчет ON Отчет FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Отчет */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insОтчетНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Отчет R/4 Оплата on parent update cascade */
+  /* ERWIN_RELATION:CHECKSUM="0005a05d", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Оплата"
+    P2C_VERB_PHRASE="R/4", C2P_VERB_PHRASE="R/4", 
+    FK_CONSTRAINT="R_4", FK_COLUMNS="ОтчетНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(ОтчетНомер)
+  BEGIN
+    IF @NUMROWS = 1
+    BEGIN
+      SELECT @insОтчетНомер = inserted.ОтчетНомер
+        FROM inserted
+      UPDATE Оплата
+      SET
+        /*  %JoinFKPK(Оплата,@ins," = ",",") */
+        Оплата.ОтчетНомер = @insОтчетНомер
+      FROM Оплата,inserted,deleted
+      WHERE
+        /*  %JoinFKPK(Оплата,deleted," = "," AND") */
+        Оплата.ОтчетНомер = deleted.ОтчетНомер
+    END
+    ELSE
+    BEGIN
+      SELECT @errno = 30006,
+             @errmsg = 'Cannot cascade Отчет update because more than one row has been affected.'
+      GOTO ERROR
+    END
+  END
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Отчет R/6 Задолжность on parent update cascade */
+  /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Отчет"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/6", C2P_VERB_PHRASE="R/6", 
+    FK_CONSTRAINT="R_6", FK_COLUMNS="ОтчетНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(ОтчетНомер)
+  BEGIN
+    IF @NUMROWS = 1
+    BEGIN
+      SELECT @insОтчетНомер = inserted.ОтчетНомер
+        FROM inserted
+      UPDATE Задолжность
+      SET
+        /*  %JoinFKPK(Задолжность,@ins," = ",",") */
+        Задолжность.ОтчетНомер = @insОтчетНомер
+      FROM Задолжность,inserted,deleted
+      WHERE
+        /*  %JoinFKPK(Задолжность,deleted," = "," AND") */
+        Задолжность.ОтчетНомер = deleted.ОтчетНомер
+    END
+    ELSE
+    BEGIN
+      SELECT @errno = 30006,
+             @errmsg = 'Cannot cascade Отчет update because more than one row has been affected.'
+      GOTO ERROR
+    END
+  END
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Деятельность R/1 Отчет on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="Деятельность"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/1", C2P_VERB_PHRASE="R/1", 
+    FK_CONSTRAINT="R_1", FK_COLUMNS="ДеятельностьНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(ДеятельностьНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,Деятельность
+        WHERE
+          /* %JoinFKPK(inserted,Деятельность) */
+          inserted.ДеятельностьНомер = Деятельность.ДеятельностьНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Отчет because Деятельность does not exist.'
+      GOTO ERROR
+    END
+  END
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* ЮридическоеЛицо R/3 Отчет on child update no action */
+  /* ERWIN_RELATION:CHECKSUM="00000000", PARENT_OWNER="", PARENT_TABLE="ЮридическоеЛицо"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/3", C2P_VERB_PHRASE="R/3", 
+    FK_CONSTRAINT="R_3", FK_COLUMNS="ЛицоНомер" */
+  IF
+    /* %ChildFK(" OR",UPDATE) */
+    UPDATE(ЛицоНомер)
+  BEGIN
+    SELECT @nullcnt = 0
+    SELECT @validcnt = count(*)
+      FROM inserted,ЮридическоеЛицо
+        WHERE
+          /* %JoinFKPK(inserted,ЮридическоеЛицо) */
+          inserted.ЛицоНомер = ЮридическоеЛицо.ЛицоНомер
+    /* %NotnullFK(inserted," IS NULL","select @nullcnt = count(*) from inserted where"," AND") */
+    
+    IF @validcnt + @nullcnt != @NUMROWS
+    BEGIN
+      SELECT @errno  = 30007,
+             @errmsg = 'Cannot update Отчет because ЮридическоеЛицо does not exist.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_Сотрудник ON Сотрудник FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on Сотрудник */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* Сотрудник R/7 Задолжность on parent delete cascade */
+    /* ERWIN_RELATION:CHECKSUM="0000d711", PARENT_OWNER="", PARENT_TABLE="Сотрудник"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/7", C2P_VERB_PHRASE="R/7", 
+    FK_CONSTRAINT="R_7", FK_COLUMNS="СотрудникНомер" */
+    DELETE Задолжность
+      FROM Задолжность,deleted
+      WHERE
+        /*  %JoinFKPK(Задолжность,deleted," = "," AND") */
+        Задолжность.СотрудникНомер = deleted.СотрудникНомер
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_Сотрудник ON Сотрудник FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on Сотрудник */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insСотрудникНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* Сотрудник R/7 Задолжность on parent update cascade */
+  /* ERWIN_RELATION:CHECKSUM="00018933", PARENT_OWNER="", PARENT_TABLE="Сотрудник"
+    CHILD_OWNER="", CHILD_TABLE="Задолжность"
+    P2C_VERB_PHRASE="R/7", C2P_VERB_PHRASE="R/7", 
+    FK_CONSTRAINT="R_7", FK_COLUMNS="СотрудникНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(СотрудникНомер)
+  BEGIN
+    IF @NUMROWS = 1
+    BEGIN
+      SELECT @insСотрудникНомер = inserted.СотрудникНомер
+        FROM inserted
+      UPDATE Задолжность
+      SET
+        /*  %JoinFKPK(Задолжность,@ins," = ",",") */
+        Задолжность.СотрудникНомер = @insСотрудникНомер
+      FROM Задолжность,inserted,deleted
+      WHERE
+        /*  %JoinFKPK(Задолжность,deleted," = "," AND") */
+        Задолжность.СотрудникНомер = deleted.СотрудникНомер
+    END
+    ELSE
+    BEGIN
+      SELECT @errno = 30006,
+             @errmsg = 'Cannot cascade Сотрудник update because more than one row has been affected.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+CREATE TRIGGER tD_ЮридическоеЛицо ON ЮридическоеЛицо FOR DELETE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* DELETE trigger on ЮридическоеЛицо */
+BEGIN
+  DECLARE  @errno   int,
+           @errmsg  varchar(255)
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    /* ЮридическоеЛицо R/3 Отчет on parent delete no action */
+    /* ERWIN_RELATION:CHECKSUM="0000f15c", PARENT_OWNER="", PARENT_TABLE="ЮридическоеЛицо"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/3", C2P_VERB_PHRASE="R/3", 
+    FK_CONSTRAINT="R_3", FK_COLUMNS="ЛицоНомер" */
+    IF EXISTS (
+      SELECT * FROM deleted,Отчет
+      WHERE
+        /*  %JoinFKPK(Отчет,deleted," = "," AND") */
+        Отчет.ЛицоНомер = deleted.ЛицоНомер
+    )
+    BEGIN
+      SELECT @errno  = 30001,
+             @errmsg = 'Cannot delete ЮридическоеЛицо because Отчет exists.'
+      GOTO ERROR
+    END
+
+
+    /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+    RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+CREATE TRIGGER tU_ЮридическоеЛицо ON ЮридическоеЛицо FOR UPDATE AS
+/* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+/* UPDATE trigger on ЮридическоеЛицо */
+BEGIN
+  DECLARE  @NUMROWS int,
+           @nullcnt int,
+           @validcnt int,
+           @insЛицоНомер integer,
+           @errno   int,
+           @errmsg  varchar(255)
+
+  SELECT @NUMROWS = @@rowcount
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  /* ЮридическоеЛицо R/3 Отчет on parent update no action */
+  /* ERWIN_RELATION:CHECKSUM="00010f37", PARENT_OWNER="", PARENT_TABLE="ЮридическоеЛицо"
+    CHILD_OWNER="", CHILD_TABLE="Отчет"
+    P2C_VERB_PHRASE="R/3", C2P_VERB_PHRASE="R/3", 
+    FK_CONSTRAINT="R_3", FK_COLUMNS="ЛицоНомер" */
+  IF
+    /* %ParentPK(" OR",UPDATE) */
+    UPDATE(ЛицоНомер)
+  BEGIN
+    IF EXISTS (
+      SELECT * FROM deleted,Отчет
+      WHERE
+        /*  %JoinFKPK(Отчет,deleted," = "," AND") */
+        Отчет.ЛицоНомер = deleted.ЛицоНомер
+    )
+    BEGIN
+      SELECT @errno  = 30005,
+             @errmsg = 'Cannot update ЮридическоеЛицо because Отчет exists.'
+      GOTO ERROR
+    END
+  END
+
+
+  /* ERwin Builtin 30 июня 2017 г. 13:24:49 */
+  RETURN
+ERROR:
+    raiserror @errno @errmsg
+    rollback transaction
+END
+go
+
+
+
+Insert into Сотрудник ( Фамилия, Имя, Отчество, Должность, Стаж) values 
+( 'Сергеев', 'Иван', 'Петрович', 'Менеджер', '6 лет'),
+( 'Андреев', 'Игорь', 'Михайлович', 'Менеджер', '4 года'),
+( 'Светлов', 'Михаил', 'Михайлович', 'Менеджер', '2 года');
+
+Insert into Банк ( Наименование, БИК, ИНН, ОКПО) values 
+( 'ВТБ', '323434', '456456', '452345'),
+( 'СберБАнк', '757675', '675674', '674567'),
+( 'ВТБ24', '856456', '836373', '878754');
+
+Insert into ЮридическоеЛицо ( Организация, БИК, ИНН, ОКПО, Телефон, Адрес) values 
+( 'СтройПласт', '354434', '457656', '458645', '231112', 'Кропоткина 32'),
+( 'РемСтрой', '745536', '656634', '673467', '765544', 'Ленина 3'),
+( 'ОкнаТТК', '56456', '836773', '878764', '656422', 'Санаева 11');
+
+Insert into Деятельность ( Наименование, Описание) values 
+( 'Торговля', '-'),
+( 'Ремонт', '-'),
+( 'Услуги связи', '-');
+
+
+Insert into Отчет ( ЛицоНомер, ДеятельностьНомер, Квартал, Год, Сумма, Налог) values 
+( 1, 1, 1, 2017, 100000, 18000),
+( 1, 1, 2, 2017, 200000, 36000),
+( 1, 2, 1, 2017, 100000, 18000),
+( 2, 1, 1, 2017, 200000, 36000),
+( 2, 1, 2, 2017, 100000, 18000),
+( 2, 1, 3, 2017, 200000, 36000),
+( 3, 1, 1, 2017, 100000, 18000),
+( 3, 2, 1, 2017, 200000, 36000),
+( 3, 3, 1, 2017, 100000, 18000);
+
+Insert into Оплата ( БанкНомер, Сумма, ОтчетНомер, ДатаОплаты) values 
+( 1, 18000, 1, '2017-01-22'),
+( 1, 36000, 2, '2017-02-22'),
+( 1, 18000, 3, '2017-04-22'),
+( 2, 36000, 4, '2017-04-22'),
+( 2, 18000, 5, '2017-03-22'),
+( 2, 36000, 6, '2017-02-22'),
+( 3, 18000, 7, '2017-04-22'),
+( 3, 36000, 8, '2017-03-22'),
+( 3, 10000, 9, '2017-02-22');
+
+
+Insert into Задолжность ( Сумма, СотрудникНомер, ОтчетНомер) values 
+( 8000, 1, 9);
+
+
+
+create view debt_view as
+select Организация, Задолжность.Сумма as Задолжность, Отчет.ОтчетНомер, Квартал, Год, Налог, Наименование as Деятельность
+from Задолжность, Отчет, Деятельность, ЮридическоеЛицо 
+where ЮридическоеЛицо.ЛицоНомер=Отчет.ЛицоНомер and Деятельность.ДеятельностьНомер=Отчет.ДеятельностьНомер and Задолжность.ОтчетНомер=Отчет.ОтчетНомер
+
+
+create view business_view as
+select distinct Наименование as Деятельность, Организация
+from Деятельность, ЮридическоеЛицо, Отчет 
+where ЮридическоеЛицо.ЛицоНомер=Отчет.ЛицоНомер and Деятельность.ДеятельностьНомер=Отчет.ДеятельностьНомер 
+
+
+create view company_view as
+select distinct Организация, Наименование as Деятельность
+from Деятельность, ЮридическоеЛицо, Отчет 
+where ЮридическоеЛицо.ЛицоНомер=Отчет.ЛицоНомер and Деятельность.ДеятельностьНомер=Отчет.ДеятельностьНомер 
+
+
+
+create  TRIGGER INSERT_PAY_TRIGGER
+ON Оплата AFTER INSERT
+AS
+DECLARE @x INT, @y INT, @z INT
+IF @@ROWCOUNT=1
+--в таблицу Оплата добавляется запись 
+BEGIN
+
+select @z=inserted.Сумма
+from inserted;
+
+IF ( (@z<=0) OR (@z is NULL) )
+    BEGIN
+	ROLLBACK TRAN
+	PRINT 'Введена некорректная сумма ' + CAST(@z AS CHAR(6))	
+    END
+else
+	BEGIN
+	PRINT 'Добавлена новая оплата на сумму  ' +CAST(@z AS CHAR(6))
+	END     
+END
+
+create  TRIGGER INSERT_DEBT_TRIGGER
+ON Задолжность INSTEAD OF INSERT
+AS
+DECLARE @x INT, @y INT, @z INT
+IF @@ROWCOUNT=1
+--в таблицу Задолжность добавляется запись 
+BEGIN
+
+select @x=inserted.ОтчетНомер, @y=inserted.СотрудникНомер, @z=inserted.Сумма
+from inserted;
+
+IF EXISTS(SELECT *
+           FROM Задолжность
+           WHERE Задолжность.ОтчетНомер =@x)
+    BEGIN
+	UPDATE Задолжность SET Сумма=Сумма+@z where ОтчетНомер =@x
+	PRINT 'Задолжность по отчету номер ' +CAST(@x AS CHAR(2))+' увеличена на '+CAST(@z AS CHAR(6))	
+    END
+else
+	BEGIN
+	INSERT INTO Задолжность (ОтчетНомер, СотрудникНомер, Сумма) VALUES (@x, @y, @z)
+	PRINT 'Добавлена новая задолжность по отчету номер ' +CAST(@x AS CHAR(2))
+	END     
+END
+
+
+create procedure CALC_PENALTY_PROC
+	@idreport int,	
+	@coefficient float,	
+	@penalty float OUTPUT
+AS
+BEGIN
+select @penalty= Сумма*@coefficient from Задолжность where ОтчетНомер=@idreport
+END
+
+
+
+create procedure SELECT_DEBT_PROC
+as
+begin
+DECLARE  @message   VARCHAR(200),
+		 @idreport    VARCHAR(50),
+         @company     VARCHAR(50),
+		 @year     int,         
+         @quarter int,  
+         @sumpay int,  
+         @tax int         
+PRINT 'Список задолжностей:'
+DECLARE debt_cursor CURSOR LOCAL FOR
+    SELECT ОтчетНомер, Организация, Год, Квартал, Налог
+    FROM Отчет, ЮридическоеЛицо
+    WHERE ЮридическоеЛицо.ЛицоНомер=Отчет.ЛицоНомер
+    
+
+OPEN debt_cursor
+FETCH NEXT FROM debt_cursor INTO @idreport, @company, @year, @quarter,  @tax 
+WHILE @@FETCH_STATUS=0
+BEGIN
+    SELECT @message='Номер отчета '+CAST(@idreport AS CHAR(2)) +
+                    ' Компания '+ @company +
+                    ' Год '+CAST(@year AS CHAR(4)) +
+					' Квартал '+CAST(@quarter AS CHAR(2)) +     
+					' Сумма налога '+CAST(@tax AS CHAR(6))    	
+					
+	SELECT @sumpay=SUM (Сумма) from Оплата where ОтчетНомер=@idreport
+	SELECT @message=@message+ 'Оплачено ' +CAST(@sumpay AS CHAR(6)) + 'Задолжность ' + CAST(@tax-@sumpay AS CHAR(6))
+	
+    PRINT @message
+
+-- переход к следующему клиенту--
+
+    FETCH NEXT FROM debt_cursor 
+      INTO @idreport, @company, @year, @quarter,  @tax 
+END
+CLOSE debt_cursor
+DEALLOCATE debt_cursor
+end
+
